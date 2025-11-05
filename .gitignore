@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.local
+.DS_Store
+server/data.json
+.firebase/
+firebase-debug.log
+firestore-debug.log
+

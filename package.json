@@ -1,0 +1,37 @@
+{
+  "name": "rdesk",
+  "version": "1.0.0",
+  "description": "Hot desk booking system",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "node server/index.js",
+    "dev:client": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node server/index.js"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "firebase": "^10.7.1",
+    "lucide-react": "^0.294.0",
+    "react-day-picker": "^8.9.1",
+    "react-router-dom": "^7.9.5",
+    "tailwind-merge": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.4.32",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.3.6",
+    "vite": "^5.0.8"
+  }
+}
