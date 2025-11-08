@@ -1,28 +1,27 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { CheckCircle2, Circle, Clock, User, MapPin, Sparkles, ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, MapPin, ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
   const scale = 10;
-  const viewBoxWidth = 100; // Increased width for more spacing
-  const viewBoxHeight = 35; // Increased height for more spacing
+  const viewBoxWidth = 100;
+  const viewBoxHeight = 35;
   const [hoveredDesk, setHoveredDesk] = useState(null);
-  
-  // Pan and zoom state
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const svgRef = useRef(null);
   const containerRef = useRef(null);
+  const mapContainerRef = useRef(null);
 
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 3;
   const ZOOM_STEP = 0.2;
 
-  // Handle mouse wheel zoom
   useEffect(() => {
     const handleWheel = (e) => {
       if (!svgRef.current) return;
@@ -35,7 +34,6 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
       const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
       const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom + delta));
       
-      // Zoom towards mouse position
       const zoomRatio = newZoom / zoom;
       const newPanX = mouseX - (mouseX - pan.x) * zoomRatio;
       const newPanY = mouseY - (mouseY - pan.y) * zoomRatio;
@@ -51,9 +49,8 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
     }
   }, [zoom, pan]);
 
-  // Handle mouse drag for panning
   const handleMouseDown = (e) => {
-    if (e.button !== 0) return; // Only left mouse button
+    if (e.button !== 0) return;
     setIsDragging(true);
     setDragStart({
       x: e.clientX - pan.x,
@@ -73,7 +70,6 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
     setIsDragging(false);
   };
 
-  // Zoom controls
   const handleZoomIn = () => {
     if (zoom >= MAX_ZOOM) return;
     const newZoom = Math.min(MAX_ZOOM, zoom + ZOOM_STEP);
@@ -111,10 +107,51 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
     });
   };
 
+  const handleFullscreen = async () => {
+    if (!mapContainerRef.current) return;
+
+    try {
+      if (!isFullscreen) {
+        if (mapContainerRef.current.requestFullscreen) {
+          await mapContainerRef.current.requestFullscreen();
+        } else if (mapContainerRef.current.webkitRequestFullscreen) {
+          await mapContainerRef.current.webkitRequestFullscreen();
+        } else if (mapContainerRef.current.msRequestFullscreen) {
+          await mapContainerRef.current.msRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          await document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          await document.msExitFullscreen();
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling fullscreen:', error);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement || !!document.webkitFullscreenElement || !!document.msFullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   const formatBookingTime = (desk) => {
     if (!desk.isBooked) return null;
     
-    // Handle time-based bookings
     if (desk.fromDate && desk.fromTime && desk.toDate && desk.toTime) {
       const fromDate = new Date(`${desk.fromDate}T${desk.fromTime}`);
       const toDate = new Date(`${desk.toDate}T${desk.toTime}`);
@@ -138,7 +175,6 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
       return `${fromDateStr}\n${fromTimeStr} - ${toTimeStr}`;
     }
     
-    // Handle legacy date-only bookings
     if (desk.date) {
       const dateStr = new Date(desk.date).toLocaleDateString('en-US', {
         weekday: 'long',
@@ -186,15 +222,19 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
     if (mapped) {
       return { ...desk, x: mapped.x, y: mapped.y };
     }
-    // Fallback: use original position if not in map
-    return desk;
+    // If desk doesn't have coordinates, use the original x/y from the desk object
+    if (desk.x && desk.y) {
+      return desk;
+    }
+    // Fallback: if no coordinates at all, don't render (return null will be filtered)
+    return { ...desk, x: desk.x || 0, y: desk.y || 0 };
   };
 
   return (
     <div className="flex flex-col items-center gap-6">
       <Card className="w-full max-w-6xl shadow-2xl border-2 border-blue-200/50 bg-gradient-to-br from-white via-blue-50/20 to-indigo-50/20 overflow-hidden">
         <CardHeader className="pb-4 border-b bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <MapPin className="h-5 w-5 text-blue-600" />
@@ -207,11 +247,11 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleFitToView}
+                onClick={handleFullscreen}
                 className="h-9 px-3"
-                title="Fit to view"
+                title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
               >
-                <Maximize2 className="h-4 w-4" />
+                {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </Button>
               <Button
                 variant="outline"
@@ -224,47 +264,24 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
               </Button>
             </div>
           </div>
-          <p className="text-center text-sm text-muted-foreground mt-3 font-medium">
-            Drag to pan • Scroll to zoom • Click to select a desk
+          <p className="text-sm text-muted-foreground font-medium">
+            Use mouse wheel to zoom, drag to pan around the map
           </p>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-6 p-6">
-          {/* Zoom Controls */}
-          <div className="absolute top-24 right-6 z-10 flex flex-col gap-2 bg-white/90 backdrop-blur-sm border-2 border-blue-200/50 rounded-lg p-2 shadow-lg">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleZoomIn}
-              disabled={zoom >= MAX_ZOOM}
-              className="h-9 w-9 p-0"
-              title="Zoom in"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-            <div className="text-xs font-semibold text-center text-muted-foreground px-2 py-1">
-              {Math.round(zoom * 100)}%
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleZoomOut}
-              disabled={zoom <= MIN_ZOOM}
-              className="h-9 w-9 p-0"
-              title="Zoom out"
-            >
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-          </div>
-
           <div 
-            ref={containerRef}
-            className="relative w-full overflow-hidden rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30"
-            style={{ height: '600px', cursor: isDragging ? 'grabbing' : 'grab' }}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            ref={mapContainerRef}
+            className={`relative w-full ${isFullscreen ? 'h-screen flex items-center justify-center bg-white' : ''}`}
           >
+            <div 
+              ref={containerRef}
+              className="relative w-full overflow-hidden rounded-xl border-2 border-blue-200/50 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30"
+              style={{ height: isFullscreen ? 'calc(100vh - 2rem)' : '600px', cursor: isDragging ? 'grabbing' : 'grab' }}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+            >
             <svg
               ref={svgRef}
               className="w-full h-full"
@@ -277,26 +294,26 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
                 transformOrigin: '0 0',
                 transition: isDragging ? 'none' : 'transform 0.1s ease-out'
               }}
-            >
-              {/* Table line with gradient effect - horizontal line between top and bottom desks */}
-              <defs>
+          >
+            <defs>
                 <linearGradient id="tableGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="hsl(var(--border))" stopOpacity="0.4" />
                   <stop offset="50%" stopColor="hsl(var(--border))" stopOpacity="0.8" />
                   <stop offset="100%" stopColor="hsl(var(--border))" stopOpacity="0.4" />
                 </linearGradient>
               </defs>
-              {/* Horizontal line between top and bottom rows - at y=17.5 (middle between y=7 and y=28) */}
-              <path
-                stroke="url(#tableGradient)"
+              <line
+                x1="5"
+                y1="17.5"
+                x2="95"
+                y2="17.5"
+                stroke="hsl(var(--border))"
+                strokeWidth="1.5"
                 strokeLinecap="round"
-                strokeWidth="2.5"
-                strokeOpacity="0.7"
-                d="M8 17.5h88"
+                opacity="0.6"
               />
 
-              {/* Render all desks */}
-              {desks.map((desk, index) => {
+              {desks && desks.length > 0 ? desks.map((desk, index) => {
                 const transformedDesk = transformDeskPosition(desk);
                 const isBooked = transformedDesk.isBooked;
                 const isPending = transformedDesk.isPending;
@@ -308,17 +325,19 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
                 
                 const fillColor = isBooked 
                   ? 'hsl(var(--destructive))' 
-                  : isPending
-                  ? 'hsl(45, 93%, 47%)'
                   : isSelected
                   ? 'hsl(var(--primary))'
+                  : isPending
+                  ? 'hsl(45, 93%, 47%)'
                   : 'hsl(var(--muted))';
                 const strokeColor = isBooked 
                   ? 'hsl(var(--destructive))' 
+                  : isSelected
+                  ? 'hsl(var(--primary))'
                   : isPending
                   ? 'hsl(45, 93%, 47%)'
                   : 'hsl(var(--border))';
-                const strokeWidth = isBooked || isPending ? '2' : '1';
+                const strokeWidth = isBooked || isSelected || isPending ? '2' : '1';
 
                 return (
                   <g
@@ -326,19 +345,20 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
                     className={cn(
                       "transition-colors duration-200",
                       !isBooked && !isPending && "cursor-pointer",
-                      (isBooked || isPending) && "cursor-not-allowed"
+                      isSelected && !isBooked && "cursor-pointer",
+                      isBooked && "cursor-not-allowed",
+                      isPending && "cursor-not-allowed"
                     )}
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!isBooked && !isPending) {
-                        onDeskClick(transformedDesk);
+                      if (isBooked || isPending) {
+                        return;
                       }
+                      onDeskClick(transformedDesk);
                     }}
                     onMouseEnter={() => setHoveredDesk(transformedDesk.id)}
                     onMouseLeave={() => setHoveredDesk(null)}
                   >
-                    {/* Removed blue ring on selection - just use the circle color change */}
-                    
                     <circle
                       cx={transformedDesk.x}
                       cy={transformedDesk.y}
@@ -348,25 +368,37 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
                       strokeWidth={strokeWidth}
                       className={cn(
                         "transition-all duration-200",
-                        isHovered && !isBooked && !isPending && "opacity-90",
+                        isHovered && !isBooked && !isPending && !isSelected && "opacity-90",
                         isSelected && "shadow-lg filter drop-shadow-lg"
                       )}
                     />
                     
-                    {/* Booked indicator */}
+                    {isSelected && !isBooked && (
+                      <circle
+                        cx={transformedDesk.x}
+                        cy={transformedDesk.y}
+                        r="6.5"
+                        fill="none"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="1"
+                        strokeOpacity="0.5"
+                        className="animate-pulse"
+                      />
+                    )}
+                    
                     {isBooked && (
                       <>
                         <text
                           x={transformedDesk.x}
                           y={transformedDesk.y + 0.8}
-                          fontSize="3.5"
+                          fontSize="2.5"
                           textAnchor="middle"
                           fill="white"
                           fontWeight="bold"
                           pointerEvents="none"
                           className="drop-shadow-lg"
                         >
-                          ✓
+                          {transformedDesk.id.replace('desk-', 'D')}
                         </text>
                         <circle
                           cx={transformedDesk.x}
@@ -381,20 +413,19 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
                       </>
                     )}
                     
-                    {/* Pending indicator */}
                     {isPending && !isBooked && (
                       <>
                         <text
                           x={transformedDesk.x}
                           y={transformedDesk.y + 0.8}
-                          fontSize="3"
+                          fontSize="2.5"
                           textAnchor="middle"
                           fill="white"
                           fontWeight="bold"
                           pointerEvents="none"
                           className="drop-shadow-lg"
                         >
-                          ⏳
+                          {transformedDesk.id.replace('desk-', 'D')}
                         </text>
                         <circle
                           cx={transformedDesk.x}
@@ -410,7 +441,21 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
                       </>
                     )}
                     
-                    {/* Native SVG title for accessibility */}
+                    {!isBooked && !isPending && (
+                      <text
+                        x={transformedDesk.x}
+                        y={transformedDesk.y + 0.8}
+                        fontSize="3"
+                        textAnchor="middle"
+                        fill={isSelected ? 'white' : 'hsl(var(--foreground))'}
+                        fontWeight="semibold"
+                        pointerEvents="none"
+                        className="drop-shadow-sm"
+                      >
+                        {transformedDesk.id.replace('desk-', 'D')}
+                      </text>
+                    )}
+                    
                     <title>
                       {isBooked 
                         ? bookingTooltip || `Booked by ${transformedDesk.bookedBy}` 
@@ -420,10 +465,9 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
                     </title>
                   </g>
                 );
-              })}
+              }).filter(Boolean) : null}
             </svg>
             
-            {/* Enhanced Tooltip for booked/pending desks */}
             {hoveredDesk && desks.find(d => d.id === hoveredDesk && (d.isBooked || d.isPending)) && (
               <div 
                 className="absolute z-50 px-4 py-3 text-sm font-medium text-popover-foreground bg-popover border-2 border-blue-200 rounded-xl shadow-2xl pointer-events-none max-w-xs"
@@ -443,9 +487,35 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
                 </div>
               </div>
             )}
+
+            <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-white/90 backdrop-blur-sm border-2 border-blue-200/50 rounded-lg p-2 shadow-lg">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleZoomIn}
+                disabled={zoom >= MAX_ZOOM}
+                className="h-9 w-9 p-0"
+                title="Zoom in"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+              <div className="text-xs font-semibold text-center text-muted-foreground px-2 py-1">
+                {Math.round(zoom * 100)}%
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleZoomOut}
+                disabled={zoom <= MIN_ZOOM}
+                className="h-9 w-9 p-0"
+                title="Zoom out"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
           </div>
 
-          {/* Enhanced Legend */}
           <div className="w-full space-y-4 pt-6 border-t border-blue-200/50">
             <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
               <div className="flex items-center gap-6 flex-wrap justify-center">
@@ -461,25 +531,11 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
                   <CheckCircle2 className="h-5 w-5 text-red-600 fill-red-500" />
                   <span className="text-sm font-semibold text-foreground">Booked</span>
                 </div>
-                {selectedDeskId && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 rounded-lg">
-                    <Circle className="h-5 w-5 text-blue-600 fill-blue-500 border-2 border-blue-600" />
-                    <span className="text-sm font-semibold text-blue-700">Selected</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 rounded-lg">
+                  <Circle className="h-5 w-5 text-blue-600 fill-blue-500" />
+                  <span className="text-sm font-semibold text-blue-700">Selected</span>
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col items-center gap-2 text-center">
-              <p className="text-sm font-medium text-foreground">
-                {selectedDeskId 
-                  ? '✓ Desk selected - Ready to confirm booking' 
-                  : desks.some(d => d.isBooked)
-                    ? 'Hover over booked desks to see booking details'
-                    : 'Click on an available desk to select'}
-              </p>
-              <p className="text-xs text-muted-foreground italic">
-                💡 Tip: Use mouse wheel to zoom, drag to pan around the map
-              </p>
             </div>
           </div>
         </CardContent>

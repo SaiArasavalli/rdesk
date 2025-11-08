@@ -2,10 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
-// Mock users
 const MOCK_USERS = [
-  { id: 'user1', email: 'john@example.com', password: 'password123', name: 'John Doe' },
-  { id: 'user2', email: 'jane@example.com', password: 'password123', name: 'Jane Smith' }
+  { id: 'user1', email: 'john@example.com', password: 'password123', name: 'John Doe', role: 'user' },
+  { id: 'user2', email: 'jane@example.com', password: 'password123', name: 'Jane Smith', role: 'user' },
+  { id: 'admin1', email: 'admin@rdesk.com', password: 'admin123', name: 'Admin', role: 'admin' }
 ];
 
 export function AuthProvider({ children }) {
@@ -13,7 +13,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in (from localStorage)
     const savedUser = localStorage.getItem('rdesk_user');
     if (savedUser) {
       setUser(JSON.parse(savedUser));
@@ -22,7 +21,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 500));
     
     const foundUser = MOCK_USERS.find(
@@ -33,7 +31,8 @@ export function AuthProvider({ children }) {
       const userData = {
         id: foundUser.id,
         email: foundUser.email,
-        name: foundUser.name
+        name: foundUser.name,
+        role: foundUser.role || 'user'
       };
       setUser(userData);
       localStorage.setItem('rdesk_user', JSON.stringify(userData));

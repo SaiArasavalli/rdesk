@@ -30,7 +30,6 @@ function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50/50 p-4 relative overflow-hidden">
-      {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
@@ -49,7 +48,7 @@ function Login() {
             </CardTitle>
           </div>
           <CardDescription className="text-base text-muted-foreground">
-            Welcome back! Sign in to manage your workspace bookings
+            Sign in to manage your workspace bookings
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -125,6 +124,13 @@ function Login() {
                 <span className="font-medium">jane@example.com</span>
                 <span className="text-muted-foreground">/</span>
                 <span className="font-mono">password123</span>
+              </div>
+              <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200/50">
+                <Mail className="h-3 w-3 text-amber-600" />
+                <span className="font-medium">admin@rdesk.com</span>
+                <span className="text-muted-foreground">/</span>
+                <span className="font-mono">admin123</span>
+                <span className="ml-auto px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[10px] font-bold uppercase">Admin</span>
               </div>
             </div>
           </div>

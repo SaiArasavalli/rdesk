@@ -1,40 +1,52 @@
 import { useEffect, useState } from 'react';
 import { 
-  subscribeToPendingSelections,
+  subscribeToDesks,
   subscribeToBookings,
   getDesksWithAvailability,
   createPendingSelection,
   deletePendingSelection,
   createBooking,
   deleteBooking,
-  getBookings
+  getBookings,
+  getPendingSelectionsFromDesks,
+  cleanupExpiredHolds
 } from '../services/firestore';
-import { initializeDesks } from '../services/firestore';
 
-// Custom hook for Firestore real-time updates
 export function useFirestore() {
   const [pendingSelections, setPendingSelections] = useState(new Map());
   const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
-    // Initialize desks if needed
-    initializeDesks().catch(console.error);
-
-    // Subscribe to pending selections
-    const unsubscribePending = subscribeToPendingSelections((pending) => {
+    // Subscribe to desks and extract pending selections from them
+    const unsubscribeDesks = subscribeToDesks((desks) => {
+      const pending = getPendingSelectionsFromDesks(desks);
       const pendingMap = new Map();
       pending.forEach(sel => {
-        pendingMap.set(sel.deskId, sel);
+        if (sel.deskId) {
+          pendingMap.set(sel.deskId, sel);
+        }
       });
       setPendingSelections(pendingMap);
     });
 
+    // Set up periodic cleanup of expired holds (every 10 seconds)
+    const cleanupInterval = setInterval(() => {
+      cleanupExpiredHolds().catch(error => {
+        console.error('Error in periodic cleanup:', error);
+      });
+    }, 10000); // Run every 10 seconds to catch expired holds quickly
+
+    // Run cleanup immediately on mount
+    cleanupExpiredHolds().catch(error => {
+      console.error('Error in initial cleanup:', error);
+    });
+
     return () => {
-      unsubscribePending();
+      unsubscribeDesks();
+      clearInterval(cleanupInterval);
     };
   }, []);
 
-  // Function to subscribe to bookings (used in Home component)
   const subscribeToUserBookings = (userId, callback) => {
     return subscribeToBookings(userId, callback);
   };

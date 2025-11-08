@@ -5,6 +5,7 @@ import { ToastProvider } from './components/ui/toast';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import BookDesk from './pages/BookDesk';
+import Admin from './pages/Admin';
 import { Loader2, Sparkles } from 'lucide-react';
 
 function AppContent() {
@@ -29,9 +30,10 @@ function AppContent() {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/book" element={user ? <BookDesk /> : <Navigate to="/login" replace />} />
-      <Route path="/" element={user ? <Home /> : <Navigate to="/login" replace />} />
+      <Route path="/login" element={user ? (user.role === 'admin' ? <Navigate to="/admin" replace /> : <Navigate to="/" replace />) : <Login />} />
+      <Route path="/admin" element={user?.role === 'admin' ? <Admin /> : <Navigate to="/login" replace />} />
+      <Route path="/book" element={user && user.role !== 'admin' ? <BookDesk /> : <Navigate to="/" replace />} />
+      <Route path="/" element={user ? (user.role === 'admin' ? <Navigate to="/admin" replace /> : <Home />) : <Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
