@@ -31,74 +31,100 @@ npm install
 
 ### 2. Set Up Firebase
 
-#### Step 1: Create a Firebase Project
+You can choose to use either the **Firestore Emulator** (for local development) or a **real Firebase project** (for production). The app can toggle between them using an environment variable.
 
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Click **"Add project"** or **"Create a project"**
-3. Enter a project name (e.g., "rdesk" or "rdesk-production")
-4. Click **"Continue"**
-5. (Optional) Enable Google Analytics if you want
-6. Click **"Create project"**
-7. Wait for the project to be created, then click **"Continue"**
+#### Option A: Using Firestore Emulator (Recommended for Development)
 
-#### Step 2: Enable Firestore Database
+The Firestore Emulator allows you to develop locally without using a real Firebase project.
 
-1. In your Firebase project, click on **"Firestore Database"** in the left sidebar
-2. Click **"Create database"**
-3. Select **"Start in production mode"** (we'll set up security rules later)
-4. Choose a location for your database (select the closest region to your users)
-5. Click **"Enable"**
+1. **Install Firebase CLI** (if not already installed):
+   ```bash
+   npm install -g firebase-tools
+   ```
 
-#### Step 3: Get Your Firebase Configuration
+2. **Login to Firebase** (if not already logged in):
+   ```bash
+   firebase login
+   ```
 
-1. In your Firebase project, click on the **gear icon** ⚙️ next to "Project Overview"
-2. Click **"Project settings"**
-3. Scroll down to the **"Your apps"** section
-4. Click on the **Web icon** (`</>`) to add a web app
-5. Register your app with a nickname (e.g., "rdesk-web")
-6. Click **"Register app"**
-7. Copy the Firebase configuration object
+3. **Create `.env.local` file** in the root directory (copy from `.env.example`):
+   ```env
+   VITE_USE_FIREBASE_EMULATOR=true
+   VITE_FIREBASE_EMULATOR_HOST=localhost
+   VITE_FIREBASE_EMULATOR_PORT=8080
+   ```
 
-#### Step 4: Set Up Environment Variables
+4. **Start the Firestore Emulator** (in a separate terminal):
+   ```bash
+   npm run emulator
+   ```
+   
+   This will start the Firestore Emulator on `http://localhost:8080` and the Emulator UI on `http://localhost:4000`.
 
-1. Create `.env.local` file in the root directory (copy from `.env.example`):
+5. **Keep the emulator running** while developing.
 
-```env
-VITE_FIREBASE_API_KEY=your-api-key-here
-VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your-project-id
-VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
-VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
-```
+#### Option B: Using Real Firebase Project (For Production)
 
-2. Replace the values with your actual Firebase configuration from Step 3
+1. **Create a Firebase Project**:
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Click **"Add project"** or **"Create a project"**
+   - Enter a project name (e.g., "rdesk" or "rdesk-production")
+   - Click **"Continue"**
+   - (Optional) Enable Google Analytics if you want
+   - Click **"Create project"**
+   - Wait for the project to be created, then click **"Continue"**
 
-#### Step 5: Set Up Firestore Security Rules
+2. **Enable Firestore Database**:
+   - In your Firebase project, click on **"Firestore Database"** in the left sidebar
+   - Click **"Create database"**
+   - Select **"Start in production mode"** (we'll set up security rules later)
+   - Choose a location for your database (select the closest region to your users)
+   - Click **"Enable"**
 
-1. In Firebase Console, go to **"Firestore Database"** → **"Rules"** tab
-2. Replace the default rules with:
+3. **Get Your Firebase Configuration**:
+   - In your Firebase project, click on the **gear icon** ⚙️ next to "Project Overview"
+   - Click **"Project settings"**
+   - Scroll down to the **"Your apps"** section
+   - Click on the **Web icon** (`</>`) to add a web app
+   - Register your app with a nickname (e.g., "rdesk-web")
+   - Click **"Register app"**
+   - Copy the Firebase configuration object
 
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Allow all reads and writes for now (for development)
-    // TODO: Add proper security rules for production
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}
-```
+4. **Set Up Environment Variables**:
+   - Create `.env.local` file in the root directory (copy from `.env.example`):
+   ```env
+   VITE_USE_FIREBASE_EMULATOR=false
+   VITE_FIREBASE_API_KEY=your-api-key-here
+   VITE_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your-project-id
+   VITE_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+   VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+   VITE_FIREBASE_APP_ID=1:123456789:web:abcdef
+   ```
+   - Replace the values with your actual Firebase configuration
 
-3. Click **"Publish"**
+5. **Set Up Firestore Security Rules**:
+   - In Firebase Console, go to **"Firestore Database"** → **"Rules"** tab
+   - Replace the default rules with:
+   ```javascript
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       // Allow all reads and writes for now (for development)
+       // TODO: Add proper security rules for production
+       match /{document=**} {
+         allow read, write: if true;
+       }
+     }
+   }
+   ```
+   - Click **"Publish"**
 
 ⚠️ **Note**: The above rules allow all reads and writes. For production, you should implement proper security rules based on your authentication system.
 
 ### 3. Initialize Desks
 
-After setting up Firebase, you need to initialize the desk data:
+After setting up Firebase (or starting the emulator), you need to initialize the desk data:
 
 **Option A: Using Admin Panel (Recommended)**
 1. Start the app: `npm run dev`
@@ -118,11 +144,24 @@ node scripts/seed-desks.js --reset
 
 ### 4. Run the Application
 
+**If using Firestore Emulator:**
+1. Start the emulator (in one terminal):
+   ```bash
+   npm run emulator
+   ```
+2. Start the app (in another terminal):
+   ```bash
+   npm run dev
+   ```
+
+**If using Real Firebase:**
 ```bash
 npm run dev
 ```
 
 This will start the frontend server (usually on `http://localhost:5173`).
+
+**Note**: When using the emulator, make sure the emulator is running before starting the app. The app will automatically connect to the emulator if `VITE_USE_FIREBASE_EMULATOR=true` is set in your `.env.local` file.
 
 ### 5. Login
 
@@ -165,6 +204,8 @@ rdesk/
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
+- `npm run emulator` - Start Firestore Emulator only
+- `npm run emulator:all` - Start all Firebase emulators
 
 ## Technology Stack
 
@@ -263,11 +304,19 @@ Stores desk layout information and real-time availability status (12 desks total
 
 **Problem**: "Firebase connection failed" or errors in console
 
-**Solutions**:
+**If using Firestore Emulator:**
+1. Make sure the emulator is running (`npm run emulator`)
+2. Check that `VITE_USE_FIREBASE_EMULATOR=true` in your `.env.local` file
+3. Verify the emulator is running on the correct port (default: 8080)
+4. Check the emulator UI at `http://localhost:4000` to see if it's running
+5. Check browser console for specific error messages
+
+**If using Real Firebase:**
 1. Check your `.env.local` file exists and has correct values
-2. Verify Firestore is enabled in your Firebase project
-3. Check Firestore security rules allow read/write access
-4. Check browser console for specific error messages
+2. Verify `VITE_USE_FIREBASE_EMULATOR=false` in your `.env.local` file
+3. Verify Firestore is enabled in your Firebase project
+4. Check Firestore security rules allow read/write access
+5. Check browser console for specific error messages
 
 ### Desks Not Showing
 
