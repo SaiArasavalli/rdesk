@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { CheckCircle2, Circle, Clock, MapPin, ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
@@ -85,26 +85,6 @@ function DeskLayout({ desks, onDeskClick, selectedDeskId }) {
   const handleReset = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
-  };
-
-  const handleFitToView = () => {
-    if (!containerRef.current) return;
-    const container = containerRef.current;
-    const containerWidth = container.clientWidth;
-    const containerHeight = container.clientHeight;
-    
-    const svgWidth = viewBoxWidth * scale;
-    const svgHeight = viewBoxHeight * scale;
-    
-    const scaleX = containerWidth / svgWidth;
-    const scaleY = containerHeight / svgHeight;
-    const newZoom = Math.min(scaleX, scaleY) * 0.9; // 90% to add padding
-    
-    setZoom(newZoom);
-    setPan({
-      x: (containerWidth - svgWidth * newZoom) / 2,
-      y: (containerHeight - svgHeight * newZoom) / 2
-    });
   };
 
   const handleFullscreen = async () => {

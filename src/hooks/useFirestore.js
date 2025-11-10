@@ -14,7 +14,6 @@ import {
 
 export function useFirestore() {
   const [pendingSelections, setPendingSelections] = useState(new Map());
-  const [isConnected, setIsConnected] = useState(true);
 
   useEffect(() => {
     // Subscribe to desks and extract pending selections from them
@@ -53,7 +52,6 @@ export function useFirestore() {
 
   return {
     pendingSelections,
-    isConnected,
     createPendingSelection,
     deletePendingSelection,
     createBooking,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/toast';
@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Calendar, Clock, Trash2, Plus, LogOut, User, MapPin, CheckCircle2, XCircle, Sparkles, Settings, AlertTriangle } from 'lucide-react';
+import { isActiveBooking, formatDateTime } from '../lib/bookingUtils';
 
 function Home() {
   const navigate = useNavigate();
@@ -18,14 +19,6 @@ function Home() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState(null);
   const [isPastBooking, setIsPastBooking] = useState(false);
-
-  // Redirect admin users to admin panel
-  useEffect(() => {
-    if (user?.role === 'admin') {
-      navigate('/admin', { replace: true });
-      return;
-    }
-  }, [user, navigate]);
 
   useEffect(() => {
     if (!user || user.role === 'admin') return;
@@ -69,61 +62,6 @@ function Home() {
     }
   };
 
-  const isActiveBooking = (booking) => {
-    if (booking.fromDate && booking.fromTime && booking.toDate && booking.toTime) {
-      const endDateTime = new Date(`${booking.toDate}T${booking.toTime}`);
-      return endDateTime > new Date();
-    }
-    if (booking.date) {
-      const bookingDate = new Date(booking.date);
-      bookingDate.setHours(23, 59, 59, 999);
-      return bookingDate >= new Date();
-    }
-    return false;
-  };
-
-  const formatDateTime = (booking) => {
-    if (booking.fromDate && booking.fromTime && booking.toDate && booking.toTime) {
-      const fromDate = new Date(`${booking.fromDate}T${booking.fromTime}`);
-      const toDate = new Date(`${booking.toDate}T${booking.toTime}`);
-      
-      const fromDateStr = fromDate.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: 'numeric'
-      });
-      const fromTimeStr = fromDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: true
-      });
-      const toTimeStr = toDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: true
-      });
-      
-      return {
-        date: fromDateStr,
-        time: `${fromTimeStr} - ${toTimeStr}`
-      };
-    }
-    
-    if (booking.date) {
-      return {
-        date: new Date(booking.date).toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }),
-        time: 'All day'
-      };
-    }
-    
-    return { date: 'Unknown', time: '' };
-  };
-
   const activeBookings = bookings.filter(isActiveBooking).sort((a, b) => {
     const dateA = a.fromDate ? new Date(`${a.fromDate}T${a.fromTime}`) : new Date(a.date);
     const dateB = b.fromDate ? new Date(`${b.fromDate}T${b.fromTime}`) : new Date(b.date);
@@ -141,7 +79,10 @@ function Home() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
       <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 shadow-sm">
         <div className="container flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <div className="relative">
               <Sparkles className="h-6 w-6 text-blue-600" />
               <div className="absolute inset-0 bg-blue-600/20 blur-lg rounded-full"></div>
@@ -149,7 +90,7 @@ function Home() {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
               rDesk
             </h1>
-          </div>
+          </button>
           
               <div className="flex items-center gap-4">
                 {user.role === 'admin' && (
@@ -180,7 +121,7 @@ function Home() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <h2 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent mb-2">
@@ -514,7 +455,7 @@ function Home() {
               }}
               className="flex-1 sm:flex-initial"
             >
-              {isPastBooking ? 'Keep Booking' : 'Keep Booking'}
+              Keep Booking
             </Button>
             <Button
               variant="destructive"

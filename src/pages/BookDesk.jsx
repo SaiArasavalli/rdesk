@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/toast';
@@ -7,7 +7,8 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { DateTimePicker } from '../components/ui/date-time-picker';
 import DeskLayout from '../components/DeskLayout';
-import { Calendar, Clock, ArrowLeft, CheckCircle2, Loader2, AlertCircle, Sparkles, LogOut, User } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, Loader2, Sparkles, LogOut, User } from 'lucide-react';
+import { checkTimeOverlap } from '../lib/bookingUtils';
 
 function BookDesk() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ function BookDesk() {
   const { showToast } = useToast();
 
   // Prevent admin from booking desks
-  React.useEffect(() => {
+  useEffect(() => {
     if (user?.role === 'admin') {
       navigate('/');
       showToast('Admin users cannot book desks', 'error');
@@ -36,7 +37,6 @@ function BookDesk() {
 
   const { 
     pendingSelections, 
-    isConnected,
     createPendingSelection,
     deletePendingSelection,
     getDesksWithAvailability,
@@ -59,6 +59,10 @@ function BookDesk() {
 
         return () => unsubscribe();
       }
+    } else {
+      // Clear desks when date/time are not all filled
+      setDesks([]);
+      setSelectedDesk(null);
     }
   }, [fromDate, fromTime, toDate, toTime]);
 
@@ -196,12 +200,7 @@ function BookDesk() {
           end: { date: booking.toDate, time: booking.toTime }
         };
         
-        const start1 = new Date(`${bookingRange.start.date}T${bookingRange.start.time}`);
-        const end1 = new Date(`${bookingRange.end.date}T${bookingRange.end.time}`);
-        const start2 = new Date(`${requestedRange.start.date}T${requestedRange.start.time}`);
-        const end2 = new Date(`${requestedRange.end.date}T${requestedRange.end.time}`);
-        
-        return start1 < end2 && start2 < end1;
+        return checkTimeOverlap(requestedRange.start, requestedRange.end, bookingRange.start, bookingRange.end);
       });
       
       if (userExistingBooking) {
@@ -304,6 +303,12 @@ function BookDesk() {
   };
 
   const handleDeskSelect = async (desk) => {
+    // Require date/time to be selected before allowing desk selection
+    if (!fromDate || !fromTime || !toDate || !toTime) {
+      showToast('Please select date and time first', 'error');
+      return;
+    }
+    
     // Only block if desk is booked for the requested time range
     if (desk.isBooked) {
       return;
@@ -328,16 +333,8 @@ function BookDesk() {
           end: { date: toDate, time: toTime }
         };
         
-        // Check for time overlap
-        const start1 = new Date(`${pendingRange.start.date}T${pendingRange.start.time}`);
-        const end1 = new Date(`${pendingRange.end.date}T${pendingRange.end.time}`);
-        const start2 = new Date(`${requestedRange.start.date}T${requestedRange.start.time}`);
-        const end2 = new Date(`${requestedRange.end.date}T${requestedRange.end.time}`);
-        
-        const overlaps = start1 < end2 && start2 < end1;
-        
         // Only block if time ranges overlap
-        if (overlaps) {
+        if (checkTimeOverlap(requestedRange.start, requestedRange.end, pendingRange.start, pendingRange.end)) {
           return;
         }
       } else {
@@ -411,39 +408,29 @@ function BookDesk() {
     }
   };
 
-  const handleBack = () => {
-    if (selectedDesk) {
-      cancelDeskSelection(selectedDesk.id);
-    }
-    navigate('/');
-  };
-
   const today = new Date().toISOString().split('T')[0];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
       <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 shadow-sm">
         <div className="container flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              className="h-9 px-3"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              if (selectedDesk) {
+                cancelDeskSelection(selectedDesk.id);
+              }
+              navigate('/');
+            }}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <div className="relative">
               <Sparkles className="h-6 w-6 text-blue-600" />
               <div className="absolute inset-0 bg-blue-600/20 blur-lg rounded-full"></div>
             </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                rDesk
-              </h1>
-            </div>
-          </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              rDesk
+            </h1>
+          </button>
           
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200/50">
@@ -642,30 +629,61 @@ function BookDesk() {
                                     {selectedDesk.id}
                                   </p>
                                   {timeRemaining !== null && timeRemaining > 0 ? (
-                                    <div className="mt-3 space-y-2">
-                                      <div className="p-3 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 shadow-sm">
-                                        <div className="flex items-center justify-between mb-2">
-                                          <div className="flex items-center gap-2">
-                                            <div className="relative">
-                                              <Clock className="h-4 w-4 text-amber-600 animate-pulse" />
-                                              <div className="absolute inset-0 bg-amber-400/20 blur-sm rounded-full"></div>
+                                    <div className="mt-4">
+                                      <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 border border-blue-200/50 shadow-lg backdrop-blur-sm">
+                                        {/* Animated background gradient */}
+                                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/10 via-indigo-400/10 to-purple-400/10 animate-pulse" />
+                                        
+                                        <div className="relative p-4">
+                                          {/* Timer Header */}
+                                          <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2.5">
+                                              <div className="relative">
+                                                <div className="absolute inset-0 bg-blue-400/30 blur-md rounded-full animate-ping" />
+                                                <div className="relative p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                                                  <Clock className="h-4 w-4 text-white" />
+                                                </div>
+                                              </div>
+                                              <div>
+                                                <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                                  Reservation Timer
+                                                </p>
+                                                <p className="text-[10px] text-slate-500 mt-0.5">
+                                                  Auto-release in
+                                                </p>
+                                              </div>
                                             </div>
-                                            <span className="text-xs font-semibold text-amber-600/80 uppercase tracking-wider">
-                                              1 Minute Timer
-                                            </span>
+                                            
+                                            {/* Timer Display */}
+                                            <div className="flex items-baseline gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-sm rounded-lg border border-blue-200/50 shadow-sm">
+                                              <span className="text-2xl font-bold text-slate-900 tabular-nums tracking-tighter">
+                                                {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                                              </span>
+                                            </div>
                                           </div>
-                                          <div className="flex items-baseline gap-1">
-                                            <span className="text-lg font-bold text-amber-700 tabular-nums tracking-tight">
-                                              {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
-                                            </span>
-                                            <span className="text-xs font-semibold text-amber-600/70">
-                                              remaining
-                                            </span>
+                                          
+                                          {/* Progress Bar */}
+                                          <div className="mb-3">
+                                            <div className="h-1.5 bg-white/60 rounded-full overflow-hidden">
+                                              <div 
+                                                className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 rounded-full transition-all duration-1000 ease-linear shadow-sm"
+                                                style={{ width: `${(timeRemaining / 60) * 100}%` }}
+                                              />
+                                            </div>
+                                          </div>
+                                          
+                                          {/* Warning Message */}
+                                          <div className="flex items-start gap-2 pt-2 border-t border-blue-200/40">
+                                            <div className="flex-shrink-0 mt-0.5">
+                                              <div className="w-4 h-4 rounded-full bg-amber-400/20 flex items-center justify-center">
+                                                <span className="text-[10px]">⚠</span>
+                                              </div>
+                                            </div>
+                                            <p className="text-xs text-slate-600 leading-relaxed">
+                                              Confirm your booking before time expires to secure your desk selection
+                                            </p>
                                           </div>
                                         </div>
-                                        <p className="text-xs font-medium text-amber-700/90 leading-tight pt-2 border-t border-amber-200/50">
-                                          ⚠️ Please confirm your booking before the timer expires, or your selection will be released.
-                                        </p>
                                       </div>
                                     </div>
                                   ) : (
@@ -680,16 +698,6 @@ function BookDesk() {
                         ) : null;
                       })()}
 
-                      {!isConnected && (
-                        <div className="pt-6 border-t border-slate-200">
-                          <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-50/80 border border-yellow-200/50">
-                            <AlertCircle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
-                            <p className="text-xs font-medium text-yellow-800">
-                              Reconnecting...
-                            </p>
-                          </div>
-                        </div>
-                      )}
 
                   <div className="pt-6 border-t border-slate-200 space-y-3">
                     <Button 
@@ -717,7 +725,22 @@ function BookDesk() {
 
               {/* Main Content - Desk Layout */}
               <div className="lg:col-span-2">
-                {loading && desks.length === 0 ? (
+                {!fromDate || !fromTime || !toDate || !toTime ? (
+                  <Card className="border-2 border-dashed border-slate-200 bg-white/50 backdrop-blur-sm">
+                    <CardContent className="flex flex-col items-center justify-center py-20">
+                      <div className="relative mb-6">
+                        <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl">
+                          <Calendar className="h-12 w-12 text-slate-400" />
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-blue-500 rounded-full border-4 border-white" />
+                      </div>
+                      <h4 className="text-xl font-bold text-foreground mb-2">Select Date & Time</h4>
+                      <p className="text-sm text-muted-foreground text-center max-w-sm">
+                        Please fill in all date and time fields to view the interactive desk map
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : loading ? (
                   <div className="flex items-center justify-center py-20">
                     <div className="flex flex-col items-center gap-4">
                       <Loader2 className="h-12 w-12 animate-spin text-blue-600" />

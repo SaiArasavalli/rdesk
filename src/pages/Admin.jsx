@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/ui/toast';
@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { initializeDesks } from '../services/firestore';
 import { Calendar, Clock, MapPin, LogOut, User, Sparkles, Settings, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { isActiveBooking, formatDateTime } from '../lib/bookingUtils';
 
 function Admin() {
   const navigate = useNavigate();
@@ -65,61 +66,6 @@ function Admin() {
     }
   };
 
-  const formatDateTime = (booking) => {
-    if (booking.fromDate && booking.fromTime && booking.toDate && booking.toTime) {
-      const fromDate = new Date(`${booking.fromDate}T${booking.fromTime}`);
-      const toDate = new Date(`${booking.toDate}T${booking.toTime}`);
-      
-      const fromDateStr = fromDate.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric',
-        year: 'numeric'
-      });
-      const fromTimeStr = fromDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: true
-      });
-      const toTimeStr = toDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: true
-      });
-      
-      return {
-        date: fromDateStr,
-        time: `${fromTimeStr} - ${toTimeStr}`
-      };
-    }
-    
-    if (booking.date) {
-      return {
-        date: new Date(booking.date).toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        }),
-        time: 'All day'
-      };
-    }
-    
-    return { date: 'Unknown', time: '' };
-  };
-
-  const isActiveBooking = (booking) => {
-    if (booking.fromDate && booking.fromTime && booking.toDate && booking.toTime) {
-      const endDateTime = new Date(`${booking.toDate}T${booking.toTime}`);
-      return endDateTime > new Date();
-    }
-    if (booking.date) {
-      const bookingDate = new Date(booking.date);
-      bookingDate.setHours(23, 59, 59, 999);
-      return bookingDate >= new Date();
-    }
-    return false;
-  };
-
   const activeBookings = allBookings.filter(isActiveBooking);
   const pastBookings = allBookings.filter(b => !isActiveBooking(b));
 
@@ -127,7 +73,10 @@ function Admin() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
       <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 shadow-sm">
         <div className="container flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <div className="relative">
               <Sparkles className="h-6 w-6 text-blue-600" />
               <div className="absolute inset-0 bg-blue-600/20 blur-lg rounded-full"></div>
@@ -135,7 +84,7 @@ function Admin() {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
               rDesk Admin
             </h1>
-          </div>
+          </button>
           
           <div className="flex items-center gap-4">
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200/50">

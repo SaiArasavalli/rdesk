@@ -13,18 +13,10 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { checkTimeOverlap } from '../lib/bookingUtils';
 
 const BOOKINGS_COLLECTION = 'bookings';
 const DESKS_COLLECTION = 'desks';
-
-const checkTimeOverlap = (start1, end1, start2, end2) => {
-  const s1 = new Date(`${start1.date}T${start1.time}`);
-  const e1 = new Date(`${end1.date}T${end1.time}`);
-  const s2 = new Date(`${start2.date}T${start2.time}`);
-  const e2 = new Date(`${end2.date}T${end2.time}`);
-  
-  return s1 < e2 && s2 < e1;
-};
 
 export const getBookings = async (userId = null) => {
   try {
