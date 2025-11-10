@@ -191,7 +191,10 @@ rdesk/
 │   │   └── firestore.js    # Firestore operations
 │   ├── contexts/           # React contexts
 │   │   └── AuthContext.jsx # Authentication context
-│   └── lib/                # Utility functions
+│   ├── lib/                # Utility functions
+│   │   ├── bookingUtils.js # Booking utility functions (time overlap, date formatting)
+│   │   ├── firebase.js     # Firebase configuration
+│   │   └── utils.js        # General utilities
 ├── scripts/
 │   └── seed-desks.js       # Script to initialize desks
 ├── .env.local              # Environment variables (create this)
